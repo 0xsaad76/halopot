@@ -13,7 +13,7 @@ use anchor_spl::{
     },
 };
 
-use crate::Escrow;
+use crate::states::Escrow;
 
 #[derive(Accounts)]
 pub struct Take<'info> {

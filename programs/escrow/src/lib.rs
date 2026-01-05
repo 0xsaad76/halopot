@@ -5,17 +5,17 @@ pub mod instructions;
 pub use instructions::*;
 
 pub mod states;
-pub use states::*;
+// pub use states::*;
 
 declare_id!("D4KtPYLxqfVjdwt3JA2esEnDRkiFpcVHWYTSbuUAPzhQ");
 
 #[program]
-pub mod scrow {
+pub mod escrow {
     use super::*; // this basically brings all the definitions from above imports in the module body below
 
     pub fn make(ctx: Context<Make>, seed: u64, deposit: u64, receive: u64) -> Result<()> {
+        ctx.accounts.init_escrow(seed, receive, &ctx.bumps)?;
         ctx.accounts.deposit(deposit)?;
-        ctx.accounts.save(seed, receive, &ctx.bumps)?;
 
         Ok(())
     }

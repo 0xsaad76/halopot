@@ -5,7 +5,7 @@ use anchor_spl::{
     token_interface::{ transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked }, // functions and structs that are used when interacting with token program
 };
 
-use crate::Escrow;
+use crate::states::Escrow;
 
 #[derive(Accounts)] // this validates the accounts that we pass below.
 #[instruction(seed: u64)] // this gets in the seed values from the user when calling the make instruction
@@ -54,9 +54,9 @@ pub struct Make<'info> {
 }
 
 impl<'info> Make<'info> {
-    pub fn save(&mut self, seeds: u64, receive: u64, bumps: &MakeBumps) -> Result<()> {
+    pub fn init_escrow(&mut self, seed: u64, receive: u64, bumps: &MakeBumps) -> Result<()> {
         self.escrow.set_inner(Escrow {
-            seeds,
+            seeds: seed,
             receive,
             maker: self.maker.key(),
             mint_a: self.mint_a.key(),
