@@ -24,4 +24,10 @@ pub mod halopot {
 
         Ok(())
     }
+
+    pub fn withdraw(ctx: Context<Withdraw>, amount_sol: u64) -> Result<()> {
+        ctx.accounts.withdraw(amount_sol)?;
+
+        Ok(())
+    }
 }
