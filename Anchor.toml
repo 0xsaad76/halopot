@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-escrow = "D4KtPYLxqfVjdwt3JA2esEnDRkiFpcVHWYTSbuUAPzhQ"
+escrow = "3ZKrto3fD4ThND7SkeXuu3avxZ9mDQ53afnbaP3gtREg"
 
 [registry]
 url = "https://api.apr.dev"
@@ -17,5 +17,3 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 \"tests/**/*.ts\""
-
-

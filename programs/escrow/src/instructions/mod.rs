@@ -1,8 +1,5 @@
-pub mod make;
-pub mod refund;
-pub mod take;
+pub mod main;
+pub mod deposit;
 
-pub use make::*; // this is gonna use all the functions written in make module
-pub use refund::*;
-pub use take::*;
-
+pub use main::*; // this is gonna use all the functions written in make module
+pub use deposit::*;
