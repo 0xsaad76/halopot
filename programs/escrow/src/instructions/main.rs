@@ -53,6 +53,9 @@ impl<'info> Initialize<'info> {
 
             bump: bumps.pool_state,
             ticket_mint_bump: bumps.ticket_mint,
+
+            ticket_count: 0,
+            winning_id: None,
         });
         msg!("HaloPot Initialized !");
         Ok(())

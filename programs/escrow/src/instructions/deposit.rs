@@ -4,7 +4,7 @@ use anchor_spl::{
     token::{ self, Mint, MintTo, Token, TokenAccount },
 };
 
-use crate::PoolState;
+use crate::{ PoolState, states::Ticket };
 
 #[derive(Accounts)]
 #[instruction(seed: u64)]
@@ -26,13 +26,37 @@ pub struct Deposit<'info> {
     )]
     pub user_ticket_ata: Account<'info, TokenAccount>,
 
+    #[account(
+        init, // a new ticket pda will be created for every 1 sol deposit
+        payer = user,
+        space = 8 + Ticket::INIT_SPACE,
+        seeds = [b"ticket", pool_state.ticket_count.to_le_bytes().as_ref()],
+        bump
+    )]
+    pub ticket: Account<'info, Ticket>,
+
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 
 impl<'info> Deposit<'info> {
-    pub fn deposit(&mut self, amount: u64) -> Result<()> {
+    pub fn deposit(&mut self, amount: u64, ticket_bump: u8) -> Result<()> {
+        const TICKET_PRICE: u64 = 1_000_000_000; // 1 SOL
+
+        if amount != TICKET_PRICE {
+            return err!(ErrorCode::IncorrectTicketPrice);
+        }
+
+        let ticket = &mut self.ticket;
+
+        ticket.authority = self.user.key();
+        ticket.id = self.pool_state.ticket_count;
+        ticket.bump = ticket_bump;
+
+        // increment the global pool_state ticket counter
+        self.pool_state.ticket_count += 1;
+
         let sol_transfer_accounts = Transfer {
             from: self.user.to_account_info(),
             to: self.pool_state.to_account_info(),
@@ -72,4 +96,11 @@ impl<'info> Deposit<'info> {
 
         Ok(())
     }
+}
+
+#[error_code]
+enum ErrorCode {
+    #[msg("Ticket price must be exactly 1 SOL")]
+    IncorrectTicketPrice,
+    // ...
 }
