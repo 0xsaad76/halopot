@@ -7,7 +7,7 @@ pub use instructions::*;
 pub mod states;
 pub use states::*;
 
-declare_id!("yjvBL3F2SkAwP5n3h6VP3UHorWbzEudxgTZWvzcbyEt");
+declare_id!("FAB2f6QCzqNM5KW88ge7waUFTUzzF3xFALxMeNnstbcA");
 
 #[program]
 pub mod halopot {
