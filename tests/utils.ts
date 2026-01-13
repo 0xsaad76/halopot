@@ -12,20 +12,16 @@ import { BN } from "bn.js";
 
 // fetching all the pda's associated with poolState and ticketMint PDA Seed
 export const getHalopotPdas = (programId: PublicKey) => {
-    console.log("want to see what happens here : ", Buffer.from(POOL_SEED));
     const [poolState] = PublicKey.findProgramAddressSync(
         [Buffer.from(POOL_SEED)],
         programId
     );
-
-    console.log("pool states : ", poolState);
 
     const [ticketMint] = PublicKey.findProgramAddressSync(
         [Buffer.from(TICKET_MINT_SEED)],
         programId
     );
 
-    console.log("ticket mint addresses : ", ticketMint);
 
     return { poolState, ticketMint };
 };

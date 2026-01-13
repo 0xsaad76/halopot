@@ -24,12 +24,14 @@ import {
     MOCK_YIELD_SOL,
     ERR_INCORRECT_PRICE
 } from "./constants";
+import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
 
 describe("halopot protocol", () => {
     const provider = anchor.AnchorProvider.env();
     anchor.setProvider(provider);
     const program = anchor.workspace.Halopot as Program<Halopot>;
 
+    // test users
     const admin = Keypair.generate();
     const user1 = Keypair.generate();
     const user2 = Keypair.generate();
@@ -45,7 +47,7 @@ describe("halopot protocol", () => {
         console.log("STARTING TEST");
 
         // funding acccounts
-        const payer = provider.wallet.payer; 
+        const payer = provider.wallet.payer; // by default there are sol in provider wallet
         await fundAccount(provider.connection, payer, admin.publicKey, 5);
         await fundAccount(provider.connection, payer, user1.publicKey, 5);
         await fundAccount(provider.connection, payer, user2.publicKey, 5);
@@ -55,33 +57,30 @@ describe("halopot protocol", () => {
         poolState = pdas.poolState;
         ticketMint = pdas.ticketMint;
 
-        // token Accounts
+        // associated ticket accounts
         user1TicketAccount = getAssociatedTokenAddressSync(ticketMint, user1.publicKey);
         user2TicketAccount = getAssociatedTokenAddressSync(ticketMint, user2.publicKey);
-
-        console.log("pool state : ", poolState);
-        console.log("ticket mint : ", ticketMint);
 
         console.log("---------------------------------------------------------");
     });
 
-    /* INITIALIZATION */
+    /* Pool State Initialization */
     describe("initialization", () => {
         it("should initialize the protocol", async () => {
             const initAccounts = {
                 admin: admin.publicKey,
                 poolState,
                 ticketMint,
-                // tokenProgram: TOKEN_PROGRAM_ID,
-                // systemProgram: SystemProgram.programId,
-                // rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                systemProgram: SystemProgram.programId,
+                rent: anchor.web3.SYSVAR_RENT_PUBKEY,
             };
 
             const tx = await program.methods.initialize().accounts(initAccounts).signers([admin]).rpc();
 
             logSignature("Initialize", tx);
 
-            // Verify State
+            // verify pool state
             const state = await program.account.poolState.fetch(poolState);
             expect(state.roundId.toNumber()).to.equal(1);
             expect(state.totalTickets.toNumber()).to.equal(0);
@@ -91,164 +90,172 @@ describe("halopot protocol", () => {
         });
     });
 
-    // /* DEPOSITS */
-    // describe("deposits", () => {
-    //     it("should allow User 1 to deposit 1 SOL (Ticket #0)", async () => {
-    //         const ticketId = 0;
-    //         const ticketPda = getTicketPda(program.programId, ticketId);
+    // what should the user1 do to deposit sol to pool state ? 
+    // user1 send sol -> pool pda state 
 
-    //         const balanceBefore = await fetchBalance(provider, user1.publicKey);
+    // /* Deposit Funcionality */
+    describe("deposits", () => {
+        it("should allow User 1 to deposit 1 SOL", async () => {
+            const ticketId = (await program.account.poolState.fetch(poolState)).ticketCount.toNumber();
+            const ticketPda = getTicketPda(program.programId, ticketId);
 
-    //         const deposit1Accounts = {
-    //             user: user1.publicKey,
-    //             poolState: poolState,
-    //             ticketMint: ticketMint,
-    //             ticket: ticketPda,
-    //             userTicketAta: user1TicketAccount,
-    //             systemProgram: SystemProgram.programId,
-    //             tokenProgram: TOKEN_PROGRAM_ID,
-    //             associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-    //         };
+            const balanceBefore = await fetchBalance(provider, user1.publicKey);
 
-    //         const tx = await program.methods.deposit(solToLamports(TICKET_PRICE_SOL)).accounts(deposit1Accounts).signers([user1]).rpc();
+            const deposit1Accounts = {
+                user: user1.publicKey,
+                poolState: poolState,
+                ticketMint: ticketMint,
+                ticket: ticketPda,
+                userTicketAta: user1TicketAccount,
+                systemProgram: SystemProgram.programId,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            };
 
-    //         logSignature("Deposit User 1", tx);
+            const tx = await program.methods.deposit(solToLamports(TICKET_PRICE_SOL)).accounts(deposit1Accounts).signers([user1]).rpc();
 
-    //         // Verify
-    //         const balanceAfter = await fetchBalance(provider, user1.publicKey);
-    //         const state = await program.account.poolState.fetch(poolState);
+            logSignature("Deposit User 1", tx);
 
-    //         expect(state.ticketCount.toNumber()).to.equal(1);
-    //         expect(balanceBefore - balanceAfter).to.be.greaterThan(TICKET_PRICE_SOL); // Price + Gas
+            // verify
+            const balanceAfter = await fetchBalance(provider, user1.publicKey);
+            const state = await program.account.poolState.fetch(poolState);
 
-    //         logData(`User 1 Balance: ${balanceAfter} SOL`);
-    //         logDone("User 1 Deposited 1 SOL and got Ticket #0");
-    //     });
+            console.log("balance : ", balanceBefore - balanceAfter);
 
-    //     it("should fail when depositing incorrect amount (0.5 SOL)", async () => {
-    //         const ticketId = 1; // Trying to buy next ticket
-    //         const ticketPda = getTicketPda(program.programId, ticketId);
+            expect(state.ticketCount.toNumber()).to.equal(ticketId + 1);
+            expect(balanceBefore - balanceAfter).to.be.greaterThan(TICKET_PRICE_SOL); // price + Gas
 
-    //         try {
-    //             const depositWrongAccounts = {
-    //                 user: user1.publicKey,
-    //                 poolState: poolState,
-    //                 ticketMint: ticketMint,
-    //                 ticket: ticketPda,
-    //                 userTicketAta: user1TicketAccount,
-    //                 systemProgram: SystemProgram.programId,
-    //                 tokenProgram: TOKEN_PROGRAM_ID,
-    //                 associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-    //             };
+            logDone("User 1 Deposited 1 SOL and got Ticket #0");
+        });
 
-    //             await program.methods.deposit(solToLamports(WRONG_PRICE_SOL)).accounts(depositWrongAccounts).signers([user1]).rpc();
+        it("should fail when depositing incorrect amount (0.5 SOL)", async () => {
+            const ticketId = (await program.account.poolState.fetch(poolState)).ticketCount.toNumber();
+            const ticketPda = getTicketPda(program.programId, ticketId);
 
-    //             expect.fail("Transaction should have failed");
-    //         } catch (err) {
-    //             // Assert error message
-    //             expect(err.message).to.include(ERR_INCORRECT_PRICE);
-    //             logDone("Correctly rejected 0.5 SOL deposit");
-    //         }
-    //     });
+            try {
+                const depositWrongAccounts = {
+                    user: user1.publicKey,
+                    poolState: poolState,
+                    ticketMint: ticketMint,
+                    ticket: ticketPda,
+                    userTicketAta: user1TicketAccount,
+                    systemProgram: SystemProgram.programId,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                    associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+                };
 
-    //     it("should allow User 2 to deposit 1 SOL (Ticket #1)", async () => {
-    //         const ticketId = 1;
-    //         const ticketPda = getTicketPda(program.programId, ticketId);
+                await program.methods.deposit(solToLamports(WRONG_PRICE_SOL)).accounts(depositWrongAccounts).signers([user1]).rpc();
 
-    //         const deposit2Accounts = {
-    //             user: user2.publicKey,
-    //             poolState: poolState,
-    //             ticketMint: ticketMint,
-    //             ticket: ticketPda,
-    //             userTicketAta: user2TicketAccount,
-    //             systemProgram: SystemProgram.programId,
-    //             tokenProgram: TOKEN_PROGRAM_ID,
-    //             associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-    //         };
+                expect.fail("Transaction should have failed");
+            } catch (err) {
+                // Assert error message
+                expect(err.message).to.include(ERR_INCORRECT_PRICE);
+                logDone("Correctly rejected 0.5 SOL deposit");
+            }
+        });
 
-    //         const tx = await program.methods.deposit(solToLamports(TICKET_PRICE_SOL)).accounts(deposit2Accounts).signers([user2]).rpc();
+        it("should allow User 2 to deposit 1 SOL (Ticket #1)", async () => {
+            const ticketId = (await program.account.poolState.fetch(poolState)).ticketCount.toNumber();
+            const ticketPda = getTicketPda(program.programId, ticketId);
 
-    //         logSignature("Deposit User 2", tx);
+            const deposit2Accounts = {
+                user: user2.publicKey,
+                poolState: poolState,
+                ticketMint: ticketMint,
+                ticket: ticketPda,
+                userTicketAta: user2TicketAccount,
+                systemProgram: SystemProgram.programId,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            };
 
-    //         const state = await program.account.poolState.fetch(poolState);
-    //         expect(state.ticketCount.toNumber()).to.equal(2); // Should be 2 tickets now
+            const tx = await program.methods.deposit(solToLamports(TICKET_PRICE_SOL)).accounts(deposit2Accounts).signers([user2]).rpc();
 
-    //         logDone("User 2 Deposited 1 SOL and got Ticket #1");
-    //     });
-    // });
+            logSignature("Deposit User 2", tx);
 
-    // /* YIELD & WINNER */
-    // describe("game loop", () => {
-    //     it("should simulate yield generation (Inject SOL)", async () => {
-    //         await injectMockYield(provider, poolState, MOCK_YIELD_SOL);
+            const state = await program.account.poolState.fetch(poolState);
+            console.log("pool state adming : ", state.admin.toBase58());
+            expect(state.ticketCount.toNumber()).to.equal((await program.account.poolState.fetch(poolState)).ticketCount.toNumber()); // Should be 2 tickets now
 
-    //         const vaultBalance = await fetchBalance(provider, poolState);
-    //         const state = await program.account.poolState.fetch(poolState);
-    //         const principal = lamportsToSol(state.totalPrincipal.toNumber());
+            logDone("User 2 Deposited 1 SOL and got Ticket #1");
+        });
+    });
 
-    //         logData(`Vault Balance: ${vaultBalance} SOL`);
-    //         logData(`Total Principal: ${principal} SOL`);
+    // /* Yeild and Winnerr */
+    describe("Yield Simulation", () => {
+        it("should simulate yield generation", async () => {
+            await injectMockYield(provider, poolState, MOCK_YIELD_SOL);
 
-    //         expect(vaultBalance).to.be.greaterThan(principal);
-    //         logDone("Yield Injected successfully");
-    //     });
+            const vaultBalance = await fetchBalance(provider, poolState);
+            const state = await program.account.poolState.fetch(poolState);
+            const principal = lamportsToSol(state.totalPrincipal.toNumber());
 
-    //     it("should pick a winner on-chain", async () => {
-    //         const pickWinnerAccounts = {
-    //             admin: admin.publicKey,
-    //             poolState: poolState,
-    //         };
+            logData(`Vault Balance: ${vaultBalance} SOL`);
+            logData(`Total Principal: ${principal} SOL`);
 
-    //         const tx = await program.methods.pickWinner().accounts(pickWinnerAccounts).signers([admin]).rpc();
+            expect(vaultBalance).to.be.greaterThan(principal);
+            logDone("Yield Injected successfully");
+        });
 
-    //         logSignature("Pick Winner", tx);
+        it("should pick a winner on-chain", async () => {
+            console.log("admin public key : ", admin.publicKey.toBase58());
 
-    //         const state = await program.account.poolState.fetch(poolState);
-    //         expect(state.winningId).to.not.be.null;
+            const pickWinnerAccounts = {
+                admin: admin.publicKey,
+                poolState: poolState,
+                // winner: Keypair.,
+            };
 
-    //         logData(`Winning Ticket ID: ${state.winningId}`);
-    //         logDone("Winner selected on-chain");
-    //     });
+            const tx = await program.methods.pickWinner().accounts(pickWinnerAccounts).signers([admin]).rpc();
 
-    //     it("should allow winner to claim prize", async () => {
-    //         // 1. Identify Winner
-    //         const state = await program.account.poolState.fetch(poolState);
-    //         const winningId = state.winningId.toNumber();
+            logSignature("Pick Winner", tx);
 
-    //         // Determine which user won based on Ticket ID
-    //         // Ticket 0 = User 1, Ticket 1 = User 2
-    //         let winnerKeypair = winningId === 0 ? user1 : user2;
-    //         let ticketPda = getTicketPda(program.programId, winningId);
+            const state = await program.account.poolState.fetch(poolState);
+            expect(state.winningId).to.not.be.null;
 
-    //         console.log(`   🏆 The winner is: ${winningId === 0 ? "User 1" : "User 2"}`);
+            logData(`Winning Ticket ID: ${state.winningId}`);
+            logDone("Winner selected on-chain");
+        });
 
-    //         const balanceBefore = await fetchBalance(provider, winnerKeypair.publicKey);
+        it("should allow winner to claim prize", async () => {
+            // identifying the winner
+            const state = await program.account.poolState.fetch(poolState);
+            const winningId = state.winningId.toNumber();
 
-    //         const claimAccounts = {
-    //             user: winnerKeypair.publicKey,
-    //             poolState: poolState,
-    //             ticket: ticketPda,
-    //             winner: winnerKeypair.publicKey,
-    //             systemProgram: SystemProgram.programId,
-    //         };
+            // determining which user won based on Ticket ID
+            // Ticket 0 = User 1, Ticket 1 = User 2
+            let winnerKeypair = winningId === 0 ? user1 : user2;
+            let ticketPda = getTicketPda(program.programId, winningId);
 
-    //         const tx = await program.methods.claimPrize().accounts(claimAccounts).signers([winnerKeypair]).rpc();
+            console.log(`   and the winner is .... : ${winningId === 0 ? "User 1" : "User 2"}`);
 
-    //         logSignature("Claim Prize", tx);
+            const balanceBefore = await fetchBalance(provider, winnerKeypair.publicKey);
 
-    //         const balanceAfter = await fetchBalance(provider, winnerKeypair.publicKey);
-    //         const profit = balanceAfter - balanceBefore;
+            const claimAccounts = {
+                user: winnerKeypair.publicKey,
+                poolState: poolState,
+                ticket: ticketPda,
+                winner: winnerKeypair.publicKey,
+                systemProgram: SystemProgram.programId,
+            };
 
-    //         logData(`Profit Made: ~${profit.toFixed(2)} SOL`);
+            const tx = await program.methods.claimPrize().accounts(claimAccounts).signers([winnerKeypair]).rpc();
 
-    //         // Profit should be close to Mock Yield (2 SOL) minus gas fees
-    //         expect(profit).to.be.greaterThan(1.0);
+            logSignature("Claim Prize", tx);
 
-    //         // Verify Reset
-    //         const stateAfter = await program.account.poolState.fetch(poolState);
-    //         expect(stateAfter.winningId).to.be.null;
+            const balanceAfter = await fetchBalance(provider, winnerKeypair.publicKey);
+            const profit = balanceAfter - balanceBefore;
 
-    //         logDone("Prize claimed and round reset");
-    // });
-    // });
+            logData(`Profit Made: ~${profit.toFixed(2)} SOL`);
+
+            // Profit should be close to Mock Yield (2 SOL) minus gas fees
+            expect(profit).to.be.greaterThan(1.0);
+
+            // verify Reset
+            const stateAfter = await program.account.poolState.fetch(poolState);
+            expect(stateAfter.winningId).to.be.null;
+
+            logDone("Prize claimed and round reset");
+        });
+    });
 });

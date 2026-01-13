@@ -16,8 +16,8 @@ pub struct PickWinner<'info> {
     pub pool_state: Account<'info, PoolState>,
 
     /// CHECK: the winner account is only used to receive SOL via transfer and does not need further constraints.
-    #[account(mut)]
-    pub winner: AccountInfo<'info>,
+    // #[account(mut)]
+    // pub winner: AccountInfo<'info>,
 
     pub system_program: Program<'info, System>,
 }

@@ -69,10 +69,11 @@ impl<'info> Deposit<'info> {
 
         system_program::transfer(sol_transfer_cpi, amount)?;
 
-        // Step B: Mint Tickets from Program -> User
+        // Mint Tickets from Program -> User
         // We need to sign with the PDA seeds because the PDA owns the Mint
-        let mint_ticket_seeds = &[b"ticket_mint".as_ref(), &[self.pool_state.ticket_mint_bump]];
-        let signer = &[&mint_ticket_seeds[..]];
+        // PoolState is the mint authority, so sign with its PDA seeds
+        let pool_seeds = &[b"halopot".as_ref(), &[self.pool_state.bump]];
+        let signer = &[&pool_seeds[..]];
 
         let mint_accounts = MintTo {
             authority: self.pool_state.to_account_info(),
