@@ -16,6 +16,7 @@ It is intentionally minimal so it can be used as a learning project or bootstrap
 ---
 
 ## Architecture
+<img width="1469" height="753" alt="halopot-arc" src="https://github.com/user-attachments/assets/11330352-cff2-4d4a-9a83-ae5a9dc86f4f" />
 
 - Program (Rust + Anchor): All on-chain logic lives in `programs/escrow`.
   - `instructions/` contains handlers like `deposit`, `withdraw`, `stake` and `unstake`.
