@@ -70,7 +70,7 @@ describe("halopot protocol", () => {
             const initAccounts = {
                 admin: admin.publicKey,
                 poolState,
-                ticketMint,
+                ticketMint, 
                 tokenProgram: TOKEN_PROGRAM_ID,
                 systemProgram: SystemProgram.programId,
                 rent: anchor.web3.SYSVAR_RENT_PUBKEY,
@@ -227,7 +227,7 @@ describe("halopot protocol", () => {
             let winnerKeypair = winningId === 0 ? user1 : user2;
             let ticketPda = getTicketPda(program.programId, winningId);
 
-            console.log(`   and the winner is .... : ${winningId === 0 ? "User 1" : "User 2"}`);
+            console.log(`and the winner is .... : ${winningId === 0 ? "User 1" : "User 2"}`);
 
             const balanceBefore = await fetchBalance(provider, winnerKeypair.publicKey);
 

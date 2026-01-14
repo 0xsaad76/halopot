@@ -44,4 +44,15 @@ pub mod halopot {
 
         Ok(())
     }
+
+    pub fn stake(ctx: Context<Staking>, amount: u64) -> Result<()> {
+        ctx.accounts.stake(amount)?;
+
+        Ok(())
+    }
+    pub fn unstake(ctx: Context<Unstake>, amount_msol: u64) -> Result<()> {
+        ctx.accounts.unstake(amount_msol)?;
+
+        Ok(())
+    }
 }
